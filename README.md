@@ -2,7 +2,7 @@
 
 Eine einfache Vereinsverwaltungssoftware für meinen Bruder.
 
-Frontend in Svelte und Backend in Rust mit axum mit einer sqlite Datenbank
+Frontend in Svelte und Backend in Rust mit axum. Alle Daten inklusive Mitgliederdateien werden in einer sqlite Datenbank gespeichert
 
 ## Features
 
