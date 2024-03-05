@@ -40,18 +40,3 @@ create table user(
   password text NOT NULL,
   UNIQUE(name)
 );
-
-insert into member
-(firstname,lastname,email,plz,city,street,housenumber,iban,bic,sepa,note,joindate)
-VALUES ('marcel frank','kucera','marcelkucera@gmx.de','35394','Gießen','carl-vogt-str.',12,'0','0',true,null,unixepoch());
-
-insert into member
-(firstname,lastname,email,plz,city,street,housenumber,iban,bic,sepa,note,joindate)
-VALUES ('nicht','rüller','marcelkucera@gmx.de','35394','Gießen','carl-vogt-str.',12,'0','0',true,null,unixepoch());
-
-insert into payment
-(id,year,memberid) VALUES (1,2023,1);
-
-insert into user
-(name,password)
-VALUES ('marcel','test123');
