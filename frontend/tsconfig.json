@@ -1,0 +1,20 @@
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "plugins": [{
+      "name": "typescript-svelte-plugin",
+            // the following options can be set additionally; they are optional; their default values are listed here
+            "enabled": true, // enables this plugin
+            "assumeIsSvelteProject": false // if true, skip detection and always assume it's a Svelte project
+    }],
+    "moduleResolution": "bundler"
+  }
+}
