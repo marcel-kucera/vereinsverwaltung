@@ -1,4 +1,5 @@
 FROM node
+LABEL org.opencontainers.image.source="https://github.com/marcel-kucera/vereinsverwaltung"
 COPY ./frontend /build
 WORKDIR /build
 RUN npm ci
