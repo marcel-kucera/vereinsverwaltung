@@ -1,15 +1,16 @@
-use std::str::FromStr;
+use std::env;
 
 use auth::{login, login_status, logout, require_auth_middleware};
 use axum::{
-    extract::{Host, Request, State},
+    extract::{Request, State},
     http::{HeaderValue, Method, StatusCode, Uri},
-    middleware::{from_fn, from_fn_with_state, Next},
+    middleware::{from_fn_with_state, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Router,
 };
 
+use dotenv::dotenv;
 use include_dir::{include_dir, Dir};
 use jwt_simple::algorithms::HS256Key;
 use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
@@ -23,22 +24,34 @@ mod payment;
 pub struct AppStateStruct {
     db: sqlx::SqlitePool,
     jwt_secret: HS256Key,
+    host: String,
+    inital_user_name: Option<String>,
+    inital_user_password: Option<String>,
 }
 
 pub type AppState = State<AppStateStruct>;
 
 static FRONTEND: Dir = include_dir!("$CARGO_MANIFEST_DIR/frontend/build");
 
-#[tokio::main]
-async fn main() {
+async fn create_config() -> AppStateStruct {
+    dotenv().ok();
+
+    println!(
+        "starting vereinsverwaltung v{}",
+        option_env!("CARGO_PKG_VERSION").unwrap_or("UNKNOWN")
+    );
+
+    // Create Database if it doesnt exist already
     let is_old_database = Sqlite::database_exists("db").await.unwrap();
     if !is_old_database {
-        println!("creating new database!");
+        println!("no database found. creating new database");
         Sqlite::create_database("db").await.unwrap();
     }
 
+    // Create db pool
     let db = SqlitePool::connect("sqlite:db").await.unwrap();
 
+    // apply schema if database has been created
     if !is_old_database {
         let migration = include_str!("../db.sql");
         sqlx::query(migration).execute(&db).await.unwrap();
@@ -47,8 +60,38 @@ async fn main() {
     let state = AppStateStruct {
         db,
         jwt_secret: HS256Key::from_bytes("***REMOVED***".as_bytes()),
+        host: env::var("VEREINSVERWALTUNG_HOST").unwrap_or("localhost:3000".to_owned()),
+        inital_user_name: env::var("VEREINSVERWALTUNG_USER").ok(),
+        inital_user_password: env::var("VEREINSVERWALTUNG_PASSWORD").ok(),
     };
 
+    // insert user if database has been created
+    if !is_old_database {
+        if state.inital_user_name.is_some() && state.inital_user_password.is_some() {
+            println!(
+                "creating inital user {}",
+                state.inital_user_name.as_ref().unwrap()
+            );
+            sqlx::query("INSERT INTO user (name,password) VALUES (?,?)")
+                .bind(&state.inital_user_name)
+                .bind(&state.inital_user_password)
+                .execute(&state.db)
+                .await
+                .unwrap();
+        } else {
+            println!("no initial user created");
+        }
+    }
+
+    println!("host: {}", &state.host);
+    return state;
+}
+
+#[tokio::main]
+async fn main() {
+    let state = create_config().await;
+
+    // protected api routes
     let api_auth_router = Router::new()
         .route(
             "/member",
@@ -74,24 +117,25 @@ async fn main() {
         .route_layer(from_fn_with_state(state.clone(), require_auth_middleware))
         .with_state(state.clone());
 
+    // api router with auth methods
     let api_router = Router::new()
         .route("/login", post(login))
         .route("/logout", get(logout))
         .merge(api_auth_router)
-        .with_state(state);
+        .with_state(state.clone());
 
     let app_router = Router::new()
         .nest("/api", api_router)
         .route("/", get(frontend_router))
         .route("/*rest", get(frontend_router))
-        .layer(from_fn(cors_middleware));
+        .layer(from_fn_with_state(state.clone(), cors_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app_router).await.unwrap()
 }
 
-async fn cors_middleware(request: Request, next: Next) -> Response {
-    let host = "http://localhost:5173";
+async fn cors_middleware(state: AppState, request: Request, next: Next) -> Response {
+    let host = &state.host;
     let mut res = match request.method() {
         &Method::OPTIONS => StatusCode::OK.into_response(),
         _ => next.run(request).await.into_response(),
