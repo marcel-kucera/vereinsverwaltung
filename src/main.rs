@@ -14,6 +14,7 @@ use dotenv::dotenv;
 use include_dir::{include_dir, Dir};
 use jwt_simple::algorithms::HS256Key;
 use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
+use tokio::signal::{ctrl_c, unix::{signal, SignalKind}};
 
 mod auth;
 mod file;
@@ -131,7 +132,20 @@ async fn main() {
         .layer(from_fn_with_state(state.clone(), cors_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app_router).await.unwrap()
+    axum::serve(listener, app_router).with_graceful_shutdown(shutdown_handler()).await.unwrap();
+
+    println!("shutting down!");
+    state.db.close().await;
+    println!("exiting!");
+}
+
+async fn shutdown_handler(){
+    let ctrlc = ctrl_c();
+    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+    tokio::select! {
+        _ = ctrlc => {}
+        _ = sigterm.recv() => {}
+    }
 }
 
 async fn cors_middleware(state: AppState, request: Request, next: Next) -> Response {
