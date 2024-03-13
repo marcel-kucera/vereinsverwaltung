@@ -15,6 +15,9 @@ export interface MemberNew {
   sepa: boolean;
   note: string | undefined;
   joindate: number;
+  birthday: number;
+  mandate: string;
+  fee: number;
 }
 
 export type Member = MemberNew & { id: number; paid: boolean };
@@ -26,7 +29,10 @@ export async function getMembers(): Promise<Member[]> {
     .then(okorerr)
     .then((res) => res.json())
     .then((res: Member[]) => {
-      res.forEach((m) => (m.joindate *= 1000));
+      res.forEach((m) => {
+        m.joindate *= 1000;
+        m.birthday *= 1000;
+      });
       return res;
     });
 }
@@ -38,12 +44,14 @@ export async function getMember(id: number): Promise<Member> {
     .then((res) => res[0])
     .then((res: Member) => {
       res.joindate *= 1000;
+      res.birthday *= 1000;
       return res;
     });
 }
 
 export async function postMember(member: MemberNew): Promise<Response> {
   member.joindate /= 1000;
+  member.birthday /= 1000;
   return fetch(MEMBER_URL, {
     method: "POST",
     body: JSON.stringify(member),

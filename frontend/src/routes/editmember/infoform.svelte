@@ -7,11 +7,14 @@
 
   let { id } = $props<{ id: number }>();
   let joindate: string = $state("");
+  let birthday: string = $state("");
 
   let repo = makeMemberRepo();
 
+  // TODO date input element that automates the timestamp conversion
   $effect(() => {
     repo.selected.then((m) => (joindate = unixToDatestring(m.joindate)));
+    repo.selected.then((m) => (birthday = unixToDatestring(m.birthday)));
   });
   $effect(() => {
     repo.select(id);
@@ -20,6 +23,7 @@
   async function submit() {
     let mResolved = await repo.selected;
     mResolved.joindate = new Date(joindate).getTime();
+    mResolved.birthday = new Date(birthday).getTime();
     repo.update(id, mResolved);
   }
 </script>
@@ -73,7 +77,7 @@
           class="bg-gray-600 text-xl scale-[2] ml-3"
         />
       </div>
-      <div class="">
+      <div>
         <label for="joindate">Beitrittsdatum:</label>
         <input
           class="bg-gray-700 rounded-lg p-3"
@@ -83,6 +87,28 @@
           required
         />
       </div>
+      <div>
+        <label for="joindate">Geburtsdatum:</label>
+        <input
+          class="bg-gray-700 rounded-lg p-3"
+          type="date"
+          name="birthday"
+          bind:value={birthday}
+          required
+        />
+      </div>
+      <Input
+        type="text"
+        name="mandate"
+        bind:text={m.mandate}
+        placeholder="Mandatsnummber"
+      />
+      <Input
+        type="number"
+        name="fee"
+        bind:number={m.fee}
+        placeholder="Beitrag"
+      />
       <div class="flex flex-col gap-1">
         <label for="note">Notiz:</label>
         <textarea

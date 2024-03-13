@@ -50,6 +50,11 @@
       <li>
         Beitrittsdatum: {new Date(member.joindate).toLocaleDateString("de-DE")}
       </li>
+      <li>
+        Geburtstag: {new Date(member.birthday).toLocaleDateString("de-DE")}
+      </li>
+      <li>Mandatsnummber: {member.mandate}</li>
+      <li>Beitrag: {member.fee}€</li>
       {#if member.note}
         <li>
           <span>Notiz:</span>

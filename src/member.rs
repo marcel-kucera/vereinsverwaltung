@@ -21,6 +21,9 @@ pub struct Member {
     note: Option<String>,
     joindate: i32,
     paid: bool,
+    birthday: i32,
+    fee: f32,
+    mandate: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -37,6 +40,9 @@ pub struct MemberNew {
     sepa: bool,
     note: Option<String>,
     joindate: i32,
+    birthday: i32,
+    fee: f32,
+    mandate: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -88,9 +94,12 @@ pub async fn post_member(state: AppState, n: Json<MemberNew>) -> StatusCode {
                     bic,
                     sepa,
                     note,
-                    joindate
+                    joindate,
+                    birthday,
+                    fee,
+                    mandate
                    )
-                   values (?,?,?,?,?,?,?,?,?,?,?,?)",
+                   values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     )
     .bind(&n.firstname)
     .bind(&n.lastname)
@@ -104,6 +113,9 @@ pub async fn post_member(state: AppState, n: Json<MemberNew>) -> StatusCode {
     .bind(&n.sepa)
     .bind(&n.note)
     .bind(&n.joindate)
+    .bind(&n.birthday)
+    .bind(&n.fee)
+    .bind(&n.mandate)
     .execute(&state.db)
     .await
     .unwrap();
@@ -134,7 +146,10 @@ pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<Member
                     sepa=?,
                     note=?,
                     joindate=?,
-                    note=?
+                    note=?,
+                    birthday=?,
+                    fee=?,
+                    mandate=?
         where id=?
                 ",
     )
@@ -151,6 +166,9 @@ pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<Member
     .bind(&n.note)
     .bind(&n.joindate)
     .bind(&n.note)
+    .bind(&n.birthday)
+    .bind(&n.fee)
+    .bind(&n.mandate)
     .bind(q.id)
     .execute(&state.db)
     .await
