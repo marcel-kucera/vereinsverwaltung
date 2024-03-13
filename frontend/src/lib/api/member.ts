@@ -69,6 +69,7 @@ export async function deleteMember(id: number): Promise<Response> {
 
 export async function putMember(id: number, member: MemberNew) {
   member.joindate /= 1000;
+  member.birthday /= 1000;
   return fetch(MEMBER_URL + `?id=${id}`, {
     method: "PUT",
     body: JSON.stringify(member),
