@@ -24,4 +24,4 @@ jobs:
               context: .
               file: Containerfile
               push: true
-              tags: ghcr.io/marcel-kucera/vereinsverwaltung:latest-aarch64
+              tags: ghcr.io/marcel-kucera/vereinsverwaltung:latest-arm64
