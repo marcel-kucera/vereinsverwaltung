@@ -55,11 +55,8 @@ async fn create_config() -> AppStateStruct {
     // Create db pool
     let db = SqlitePool::connect("sqlite:db").await.unwrap();
 
-    // apply schema if database has been created
-    if !is_old_database {
-        let migration = include_str!("../db.sql");
-        sqlx::query(migration).execute(&db).await.unwrap();
-    }
+    // run migrations
+    sqlx::migrate!().run(&db).await.unwrap();
 
     let state = AppStateStruct {
         db,

@@ -1,8 +1,4 @@
-drop table if exists member;
-drop table if exists payment;
-drop table if exists memberfile;
-
-create table member(
+create table if not exists member (
   id INTEGER PRIMARY KEY NOT NULL,
   firstname text NOT NULL,
   lastname text NOT NULL,
@@ -18,7 +14,7 @@ create table member(
   joindate int not null
 );
 
-create table payment(
+create table if not exists payment (
   id INTEGER PRIMARY KEY NOT NULL,
   year int not null,
   memberid int not null,
@@ -26,7 +22,7 @@ create table payment(
   UNIQUE(memberid,year)
 );
 
-create table memberfile(
+create table if not exists memberfile (
   id INTEGER PRIMARY KEY NOT NULL,
   memberid int not null,
   name text not null,
@@ -34,7 +30,7 @@ create table memberfile(
   FOREIGN KEY (memberid) REFERENCES member(id) ON DELETE cascade
 );
 
-create table user(
+create table if not exists user(
   id INTEGER PRIMARY KEY NOT NULL,
   name text NOT NULL,
   password text NOT NULL,
