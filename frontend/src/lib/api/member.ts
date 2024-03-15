@@ -20,12 +20,29 @@ export interface MemberNew {
   fee: number;
 }
 
-export type Member = MemberNew & { id: number; paid: boolean };
+export interface Member extends MemberNew {
+  id: number;
+  paid: boolean;
+  deleted: boolean;
+}
 
 const MEMBER_URL = API_URL + "member";
 
 export async function getMembers(): Promise<Member[]> {
   return fetch(MEMBER_URL, { credentials: "include" })
+    .then(okorerr)
+    .then((res) => res.json())
+    .then((res: Member[]) => {
+      res.forEach((m) => {
+        m.joindate *= 1000;
+        m.birthday *= 1000;
+      });
+      return res;
+    });
+}
+
+export async function getDeletedMembers(): Promise<Member[]> {
+  return fetch(MEMBER_URL + "?show_deleted=true", { credentials: "include" })
     .then(okorerr)
     .then((res) => res.json())
     .then((res: Member[]) => {
@@ -78,6 +95,13 @@ export async function putMember(id: number, member: MemberNew) {
   }).then(okorerr);
 }
 
+export async function restoreMember(id: number) {
+  return fetch(MEMBER_URL + `/restore?id=${id}`, {
+    credentials: "include",
+    method: "POST",
+  });
+}
+
 export function makeMemberRepo() {
   return new CrudRepo({
     get: getMembers,
@@ -85,5 +109,13 @@ export function makeMemberRepo() {
     add: postMember,
     update: putMember,
     delete: deleteMember,
+  });
+}
+
+// calling delete on this repo will restore the member / remove the deleted flag
+export function makeDeletedMemberRepo() {
+  return new CrudRepo({
+    get: getDeletedMembers,
+    delete: restoreMember,
   });
 }

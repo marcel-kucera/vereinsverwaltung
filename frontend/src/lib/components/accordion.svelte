@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { makeMemberRepo, type Member } from "$lib/api/member";
+  import {
+    makeDeletedMemberRepo,
+    makeMemberRepo,
+    type Member,
+  } from "$lib/api/member";
   import { makePaymentRepo } from "$lib/api/payment";
   import { modalStore } from "$lib/stores/modalStore.svelte";
   import Button from "./button.svelte";
@@ -17,11 +21,13 @@
   }
 
   function deleteMember() {
-    let memberRepo = makeMemberRepo();
+    let memberRepo = member.deleted
+      ? makeDeletedMemberRepo()
+      : makeMemberRepo();
 
     modalStore.ask(
-      "Mitglied löschen?",
-      `Bist du dir sicher, dass du das Mitglied "${member.firstname} ${member.lastname}" löschen möchtest?`,
+      `Mitglied ${member.deleted ? "wiederherstellen" : "löschen"}?`,
+      `Bist du dir sicher, dass du das Mitglied "${member.firstname} ${member.lastname}" ${member.deleted ? "wiederherstellen" : "löschen"} möchtest?`,
       () => {
         memberRepo.delete(member.id);
         memberRepo.deletePromise?.then(updateMemberlist);
@@ -82,9 +88,9 @@
         <Button link href="/editmember?id={member.id}">
           <span>Bearbeiten</span>
         </Button>
-        <Button danger on:click={deleteMember}>
-          <span>Löschen</span>
-        </Button>
+        <Button danger on:click={deleteMember}
+          >{member.deleted ? "Wiederherstellen" : "Löschen"}</Button
+        >
       </div>
     </div>
   </main>

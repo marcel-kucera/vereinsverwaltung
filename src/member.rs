@@ -24,6 +24,7 @@ pub struct Member {
     birthday: i32,
     fee: f32,
     mandate: String,
+    deleted: bool,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -50,11 +51,28 @@ pub struct MemberIdQuery {
     id: i32,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct ShowDeletedQuery {
+    show_deleted: bool,
+}
+
 pub async fn get_member(
     state: AppState,
     id: Option<Query<MemberIdQuery>>,
+    show_deleted: Option<Query<ShowDeletedQuery>>,
 ) -> Result<Json<Vec<Member>>, StatusCode> {
     let currentyear = chrono::Utc::now().year();
+
+    let where_clause = if let Some(ref id_query) = id {
+        format!("where m.id = {}", id_query.id)
+    } else {
+        format!(
+            "where m.deleted = {}",
+            show_deleted
+                .map(|f| if f.show_deleted { "1" } else { "0" })
+                .unwrap_or("0")
+        )
+    };
 
     let res = sqlx::query_as::<_, Member>(&format!(
         "select
@@ -63,10 +81,7 @@ pub async fn get_member(
         from member as m
         {}
         order by firstname asc",
-        currentyear,
-        id.as_ref()
-            .map(|v| format!("where m.id = {}", v.id))
-            .unwrap_or("".to_string())
+        currentyear, where_clause
     ))
     .fetch_all(&state.db)
     .await
@@ -124,7 +139,7 @@ pub async fn post_member(state: AppState, n: Json<MemberNew>) -> StatusCode {
 }
 
 pub async fn delete_member(state: AppState, q: Query<MemberIdQuery>) {
-    sqlx::query("delete from member where id = ?")
+    sqlx::query("update member set deleted=1 where id = ?")
         .bind(q.id)
         .execute(&state.db)
         .await
@@ -173,4 +188,12 @@ pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<Member
     .execute(&state.db)
     .await
     .unwrap();
+}
+
+pub async fn restore_member(state: AppState, q: Query<MemberIdQuery>) {
+    sqlx::query("update member set deleted=0 where id=?")
+        .bind(&q.id)
+        .execute(&state.db)
+        .await
+        .unwrap();
 }

@@ -101,6 +101,7 @@ async fn main() {
                 .delete(member::delete_member)
                 .put(member::put_member),
         )
+        .route("/member/restore", post(member::restore_member))
         .route(
             "/payment",
             get(payment::get_payment)

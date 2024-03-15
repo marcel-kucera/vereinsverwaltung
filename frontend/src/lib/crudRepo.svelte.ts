@@ -7,23 +7,23 @@ type ModifiedPromise<_T> = Promise<Response>;
 export interface CrudOptions<T, TNew> {
   get?: () => Data<T>;
   select?: (id: number) => Select<T>;
-  add: (n: TNew) => ModifiedPromise<T>;
-  update?: (id: number, n: TNew) => ModifiedPromise<T>;
-  delete: (id: number) => ModifiedPromise<T>;
+  add?: (n: TNew) => ModifiedPromise;
+  update?: (id: number, n: TNew) => ModifiedPromise;
+  delete?: (id: number) => ModifiedPromise;
 }
 
 export class CrudRepo<T, TNew> {
   data: Data<T> = $state(emptyPromise());
   selected: Select<T> = $state(emptyPromise());
 
-  addPromise?: ModifiedPromise<T> = $state();
+  addPromise?: ModifiedPromise = $state();
   addInflight: boolean = $state(false);
 
-  updatePromise?: ModifiedPromise<T> = $state();
+  updatePromise?: ModifiedPromise = $state();
   updateId?: number = $state();
   updateInflight: boolean = $state(false);
 
-  deletePromise?: ModifiedPromise<T> = $state();
+  deletePromise?: ModifiedPromise = $state();
   deleteId?: number = $state();
   deleteInflight: boolean = $state(false);
 
@@ -67,6 +67,9 @@ export class CrudRepo<T, TNew> {
   }
 
   add(n: TNew) {
+    if (!this.opts.add) {
+      throw "add() was not defined for this repo";
+    }
     let self = this;
 
     this.addInflight = true;
@@ -90,6 +93,9 @@ export class CrudRepo<T, TNew> {
   }
 
   delete(id: number) {
+    if (!this.opts.delete) {
+      throw "delete() was not defined for this repo";
+    }
     let self = this;
 
     this.deleteInflight = true;
