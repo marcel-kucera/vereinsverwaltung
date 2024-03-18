@@ -85,7 +85,7 @@ async fn create_config() -> AppStateStruct {
     }
 
     println!("host: {}", &state.host);
-    return state;
+    state
 }
 
 #[tokio::main]

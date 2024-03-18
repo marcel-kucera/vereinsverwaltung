@@ -61,33 +61,30 @@ pub async fn get_member(
     id: Option<Query<MemberIdQuery>>,
     show_deleted: Option<Query<ShowDeletedQuery>>,
 ) -> Result<Json<Vec<Member>>, StatusCode> {
-    let currentyear = chrono::Utc::now().year();
+    let current_year = chrono::Utc::now().year();
 
     let where_clause = if let Some(ref id_query) = id {
         format!("where m.id = {}", id_query.id)
     } else {
         format!(
             "where m.deleted = {}",
-            show_deleted
-                .map(|f| if f.show_deleted { "1" } else { "0" })
-                .unwrap_or("0")
+            show_deleted.map_or("0", |f| if f.show_deleted { "1" } else { "0" })
         )
     };
 
     let res = sqlx::query_as::<_, Member>(&format!(
         "select
         m.*,
-        {} in (select p.year from payment as p where memberid = m.id) as paid
+        {current_year} in (select p.year from payment as p where memberid = m.id) as paid
         from member as m
-        {}
-        order by firstname asc",
-        currentyear, where_clause
+        {where_clause}
+        order by firstname asc"
     ))
     .fetch_all(&state.db)
     .await
     .unwrap();
 
-    if id.is_some() && res.len() == 0 {
+    if id.is_some() && res.is_empty() {
         return Err(StatusCode::NOT_FOUND);
     }
 
@@ -125,11 +122,11 @@ pub async fn post_member(state: AppState, n: Json<MemberNew>) -> StatusCode {
     .bind(&n.housenumber)
     .bind(&n.iban)
     .bind(&n.bic)
-    .bind(&n.sepa)
+    .bind(n.sepa)
     .bind(&n.note)
-    .bind(&n.joindate)
-    .bind(&n.birthday)
-    .bind(&n.fee)
+    .bind(n.joindate)
+    .bind(n.birthday)
+    .bind(n.fee)
     .bind(&n.mandate)
     .execute(&state.db)
     .await
@@ -177,12 +174,12 @@ pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<Member
     .bind(&n.housenumber)
     .bind(&n.iban)
     .bind(&n.bic)
-    .bind(&n.sepa)
+    .bind(n.sepa)
     .bind(&n.note)
-    .bind(&n.joindate)
+    .bind(n.joindate)
     .bind(&n.note)
-    .bind(&n.birthday)
-    .bind(&n.fee)
+    .bind(n.birthday)
+    .bind(n.fee)
     .bind(&n.mandate)
     .bind(q.id)
     .execute(&state.db)
@@ -192,7 +189,7 @@ pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<Member
 
 pub async fn restore_member(state: AppState, q: Query<MemberIdQuery>) {
     sqlx::query("update member set deleted=0 where id=?")
-        .bind(&q.id)
+        .bind(q.id)
         .execute(&state.db)
         .await
         .unwrap();
