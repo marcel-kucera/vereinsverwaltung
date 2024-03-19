@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, net::SocketAddr};
 
 use auth::{login, login_status, logout, require_auth_middleware};
 use axum::{
@@ -133,10 +133,13 @@ async fn main() {
         .layer(from_fn_with_state(state.clone(), cors_middleware));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app_router)
-        .with_graceful_shutdown(shutdown_handler())
-        .await
-        .unwrap();
+    axum::serve(
+        listener,
+        app_router.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_handler())
+    .await
+    .unwrap();
 
     println!("shutting down!");
     state.db.close().await;

@@ -1,6 +1,8 @@
+use std::net::SocketAddr;
+
 use axum::{
-    extract::Request,
-    http::{header::SET_COOKIE, StatusCode},
+    extract::{ConnectInfo, Request},
+    http::{header::SET_COOKIE, HeaderMap, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
     Json,
@@ -50,16 +52,37 @@ async fn does_user_exist(db: &Pool<Sqlite>, name: &str, password: &str) -> Resul
     Ok(user.is_some())
 }
 
-pub async fn login(state: AppState, login: Json<Login>) -> impl IntoResponse {
+pub async fn login(
+    state: AppState,
+    ip: ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    login: Json<Login>,
+) -> impl IntoResponse {
+    let forwarded_for = headers
+        .get("X-Forwarded-For")
+        .map_or("not set", |f| f.to_str().unwrap_or("error"));
+
     if does_user_exist(&state.db, &login.name, &login.password)
         .await
         .unwrap()
     {
         let token = generate_token(&state.jwt_secret);
+        println!(
+            "new login: username: {} ip: {} X-Forwarded-For: {}",
+            login.name,
+            ip.ip(),
+            forwarded_for
+        );
 
         let cookie = Cookie::new("auth", token).to_string();
         ([(SET_COOKIE, cookie)], "logged in").into_response()
     } else {
+        println!(
+            "failed login attempt: username: {} ip: {} X-Forwarded-For: {}",
+            login.name,
+            ip.ip(),
+            forwarded_for
+        );
         (StatusCode::NOT_FOUND, "username or password is wrong").into_response()
     }
 }
