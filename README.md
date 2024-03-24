@@ -25,6 +25,7 @@ Das gesamte Frontend wird beim Buildprozess in die Serverbinary eingebettet. Hei
 
 Der Server wird über Umgebungsvariablen konfiguriert.
 
+- `VEREINSVERWALTUNG_JWT_SECRET` - Ein zufälliger Key für die JWT signierung. Muss gesetzt werden!
 - `VEREINSVERWALTUNG_HOST` - Hostadresse des Servers. Wird für CORS benötigt
 - `VEREINSVERWALTUNG_USER` - Benutzername des ersten Benutzers (nur relevant bei Datenbankinitialisierung)
 - `VEREINSVERWALTUNG_PASSWORD` - Passwort des ersten Benutzers (nur relevant bei Datenbankinitialisierung)

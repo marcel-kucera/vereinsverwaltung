@@ -60,7 +60,11 @@ async fn create_config() -> AppStateStruct {
 
     let state = AppStateStruct {
         db,
-        jwt_secret: HS256Key::from_bytes("***REMOVED***".as_bytes()),
+        jwt_secret: HS256Key::from_bytes(
+            env::var("VEREINSVERWALTUNG_JWT_SECRET")
+                .expect("setting VEREINSVERWALTUNG_JWT_SECRET is required")
+                .as_bytes(),
+        ),
         host: env::var("VEREINSVERWALTUNG_HOST").unwrap_or("localhost:3000".to_owned()),
         inital_user_name: env::var("VEREINSVERWALTUNG_USER").ok(),
         inital_user_password: env::var("VEREINSVERWALTUNG_PASSWORD").ok(),
