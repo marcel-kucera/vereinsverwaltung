@@ -108,6 +108,7 @@
         name="fee"
         bind:number={m.fee}
         placeholder="Beitrag"
+        step="0.01"
       />
       <div class="flex flex-col gap-1">
         <label for="note">Notiz:</label>
