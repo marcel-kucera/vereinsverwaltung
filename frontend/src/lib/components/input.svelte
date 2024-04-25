@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { name, placeholder, text, type, number, ...rest } = $props<{
+  let { name, placeholder, text=$bindable(), type, number=$bindable(), ...rest } = $props<{
     name: string;
     placeholder: string;
     type?: string;
