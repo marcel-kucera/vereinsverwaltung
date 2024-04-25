@@ -153,9 +153,11 @@ async fn main() {
 async fn shutdown_handler() {
     let ctrlc = ctrl_c();
     let mut sigterm = signal(SignalKind::terminate()).unwrap();
+    let mut sigint = signal(SignalKind::interrupt()).unwrap();
     tokio::select! {
         _ = ctrlc => {}
         _ = sigterm.recv() => {}
+        _ = sigint.recv() => {}
     }
 }
 
