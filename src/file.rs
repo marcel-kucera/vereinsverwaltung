@@ -66,6 +66,7 @@ pub async fn get_file(state: AppState, query: Query<IdQuery>) -> impl IntoRespon
 #[derive(TryFromMultipart)]
 pub struct FileUpload {
     memberid: i32,
+    #[form_data(limit = "1GiB")]
     file: FieldData<Bytes>,
 }
 

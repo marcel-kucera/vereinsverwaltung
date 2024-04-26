@@ -2,7 +2,7 @@ use std::{env, net::SocketAddr};
 
 use auth::{login, login_status, logout, require_auth_middleware};
 use axum::{
-    extract::{Request, State},
+    extract::{DefaultBodyLimit, Request, State},
     http::{HeaderValue, Method, StatusCode, Uri},
     middleware::{from_fn_with_state, Next},
     response::{IntoResponse, Response},
@@ -134,7 +134,8 @@ async fn main() {
         .nest("/api", api_router)
         .route("/", get(frontend_router))
         .route("/*rest", get(frontend_router))
-        .layer(from_fn_with_state(state.clone(), cors_middleware));
+        .layer(from_fn_with_state(state.clone(), cors_middleware))
+        .layer(DefaultBodyLimit::disable());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(
