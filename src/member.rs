@@ -1,9 +1,12 @@
-use axum::{extract::Query, http::StatusCode, Json};
+use axum::{extract::Query, Json};
 use chrono::Datelike;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-use crate::AppState;
+use crate::{
+    error::{AppError, UserError},
+    AppState,
+};
 
 #[derive(Deserialize, Serialize, FromRow)]
 pub struct Member {
@@ -60,7 +63,7 @@ pub async fn get_member(
     state: AppState,
     id: Option<Query<MemberIdQuery>>,
     show_deleted: Option<Query<ShowDeletedQuery>>,
-) -> Result<Json<Vec<Member>>, StatusCode> {
+) -> Result<Json<Vec<Member>>, AppError> {
     let current_year = chrono::Utc::now().year();
 
     let where_clause = if let Some(ref id_query) = id {
@@ -81,17 +84,16 @@ pub async fn get_member(
         order by firstname asc"
     ))
     .fetch_all(&state.db)
-    .await
-    .unwrap();
+    .await?;
 
     if id.is_some() && res.is_empty() {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(UserError::NotFoundError.into());
     }
 
     Ok(Json(res))
 }
 
-pub async fn post_member(state: AppState, n: Json<MemberNew>) -> StatusCode {
+pub async fn post_member(state: AppState, n: Json<MemberNew>) -> Result<(), AppError> {
     sqlx::query(
         "
                    insert into member 
@@ -129,21 +131,24 @@ pub async fn post_member(state: AppState, n: Json<MemberNew>) -> StatusCode {
     .bind(n.fee)
     .bind(&n.mandate)
     .execute(&state.db)
-    .await
-    .unwrap();
+    .await?;
 
-    StatusCode::OK
+    Ok(())
 }
 
-pub async fn delete_member(state: AppState, q: Query<MemberIdQuery>) {
+pub async fn delete_member(state: AppState, q: Query<MemberIdQuery>) -> Result<(), AppError> {
     sqlx::query("update member set deleted=1 where id = ?")
         .bind(q.id)
         .execute(&state.db)
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }
 
-pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<MemberNew>) {
+pub async fn put_member(
+    state: AppState,
+    q: Query<MemberIdQuery>,
+    n: Json<MemberNew>,
+) -> Result<(), AppError> {
     sqlx::query(
         "update member set
                    firstname=?,
@@ -185,6 +190,7 @@ pub async fn put_member(state: AppState, q: Query<MemberIdQuery>, n: Json<Member
     .execute(&state.db)
     .await
     .unwrap();
+    Ok(())
 }
 
 pub async fn restore_member(state: AppState, q: Query<MemberIdQuery>) {

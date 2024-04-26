@@ -1,15 +1,12 @@
-use axum::{
-    body::Bytes,
-    extract::Query,
-    http::{header, StatusCode},
-    response::IntoResponse,
-    Json,
-};
+use axum::{body::Bytes, extract::Query, http::header, response::IntoResponse, Json};
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-use crate::AppState;
+use crate::{
+    error::{AppError, UserError},
+    AppState,
+};
 
 #[derive(Deserialize, Serialize, FromRow)]
 pub struct FileEntry {
@@ -33,12 +30,11 @@ pub struct MemberIdQuery {
 pub async fn get_filelist(
     query: Query<MemberIdQuery>,
     state: AppState,
-) -> Result<Json<Vec<FileEntry>>, StatusCode> {
+) -> Result<Json<Vec<FileEntry>>, AppError> {
     let res = sqlx::query_as::<_, FileEntry>("select id,name from memberfile where memberid = ?")
         .bind(query.memberid)
         .fetch_all(&state.db)
-        .await
-        .unwrap();
+        .await?;
     Ok(Json(res))
 }
 
@@ -47,20 +43,22 @@ pub struct IdQuery {
     id: i32,
 }
 
-pub async fn get_file(state: AppState, query: Query<IdQuery>) -> impl IntoResponse {
+pub async fn get_file(
+    state: AppState,
+    query: Query<IdQuery>,
+) -> Result<impl IntoResponse, AppError> {
     let res = sqlx::query_as::<_, File>("select * from memberfile where id = ?")
         .bind(query.id)
         .fetch_one(&state.db)
-        .await
-        .unwrap();
+        .await?;
 
-    (
+    Ok((
         [(
             header::CONTENT_DISPOSITION,
             format!("attachment; filename={}", res.name),
         )],
         res.file,
-    )
+    ))
 }
 
 #[derive(TryFromMultipart)]
@@ -70,25 +68,33 @@ pub struct FileUpload {
     file: FieldData<Bytes>,
 }
 
-pub async fn post_file(state: AppState, upload: TypedMultipart<FileUpload>) {
+pub async fn post_file(
+    state: AppState,
+    upload: TypedMultipart<FileUpload>,
+) -> Result<(), AppError> {
     let form = upload.0;
+
     let memberid = form.memberid;
-    let filedata = form.file.metadata;
+    let filename = form
+        .file
+        .metadata
+        .file_name
+        .ok_or(UserError::FileNameMissingError)?;
     let file = form.file.contents.to_vec();
 
     sqlx::query("insert into memberfile (memberid,name,file) values (?,?,?)")
         .bind(memberid)
-        .bind(filedata.file_name.unwrap())
+        .bind(filename)
         .bind(file)
         .execute(&state.db)
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }
 
-pub async fn delete_file(state: AppState, q: Query<IdQuery>) {
+pub async fn delete_file(state: AppState, q: Query<IdQuery>) -> Result<(), AppError> {
     sqlx::query("delete from memberfile where id = ?")
         .bind(q.id)
         .execute(&state.db)
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }

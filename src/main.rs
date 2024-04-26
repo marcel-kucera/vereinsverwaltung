@@ -20,6 +20,7 @@ use tokio::signal::{
 };
 
 mod auth;
+mod error;
 mod file;
 mod member;
 mod payment;
@@ -72,14 +73,12 @@ async fn create_config() -> AppStateStruct {
 
     // insert user if database has been created
     if !is_old_database {
-        if state.inital_user_name.is_some() && state.inital_user_password.is_some() {
-            println!(
-                "creating inital user {}",
-                state.inital_user_name.as_ref().unwrap()
-            );
+        if let (Some(name), Some(password)) = (&state.inital_user_name, &state.inital_user_password)
+        {
+            println!("creating inital user {}", name);
             sqlx::query("INSERT INTO user (name,password) VALUES (?,?)")
-                .bind(&state.inital_user_name)
-                .bind(&state.inital_user_password)
+                .bind(name)
+                .bind(password)
                 .execute(&state.db)
                 .await
                 .unwrap();
@@ -130,6 +129,7 @@ async fn main() {
         .merge(api_auth_router)
         .with_state(state.clone());
 
+    // final router with frontend
     let app_router = Router::new()
         .nest("/api", api_router)
         .route("/", get(frontend_router))
@@ -137,6 +137,7 @@ async fn main() {
         .layer(from_fn_with_state(state.clone(), cors_middleware))
         .layer(DefaultBodyLimit::disable());
 
+    // setup server
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(
         listener,

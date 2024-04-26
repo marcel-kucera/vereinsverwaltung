@@ -14,9 +14,12 @@ use jwt_simple::{
     reexports::coarsetime::Duration,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{prelude::FromRow, Error, Pool, Sqlite};
+use sqlx::{prelude::FromRow, Pool, Sqlite};
 
-use crate::AppState;
+use crate::{
+    error::{AppError, UserError},
+    AppState,
+};
 
 #[derive(Deserialize, Serialize, FromRow)]
 struct User {
@@ -31,10 +34,9 @@ pub struct Login {
     password: String,
 }
 
-fn generate_token(key: &HS256Key) -> String {
+fn generate_token(key: &HS256Key) -> Result<String, AppError> {
     let claim = Claims::create(Duration::from_days(3));
-    let token = key.authenticate(claim);
-    token.unwrap()
+    Ok(key.authenticate(claim)?)
 }
 
 fn is_valid_token(key: &HS256Key, token: &str) -> bool {
@@ -42,7 +44,7 @@ fn is_valid_token(key: &HS256Key, token: &str) -> bool {
     res.is_ok()
 }
 
-async fn does_user_exist(db: &Pool<Sqlite>, name: &str, password: &str) -> Result<bool, Error> {
+async fn does_user_exist(db: &Pool<Sqlite>, name: &str, password: &str) -> Result<bool, AppError> {
     let user = sqlx::query("select * from user where name = ? and password = ?")
         .bind(name)
         .bind(password)
@@ -57,16 +59,13 @@ pub async fn login(
     ip: ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     login: Json<Login>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, AppError> {
     let forwarded_for = headers
         .get("X-Forwarded-For")
         .map_or("not set", |f| f.to_str().unwrap_or("error"));
 
-    if does_user_exist(&state.db, &login.name, &login.password)
-        .await
-        .unwrap()
-    {
-        let token = generate_token(&state.jwt_secret);
+    if does_user_exist(&state.db, &login.name, &login.password).await? {
+        let token = generate_token(&state.jwt_secret)?;
         println!(
             "new login: username: {} ip: {} X-Forwarded-For: {}",
             login.name,
@@ -75,7 +74,7 @@ pub async fn login(
         );
 
         let cookie = Cookie::new("auth", token).to_string();
-        ([(SET_COOKIE, cookie)], "logged in").into_response()
+        Ok(([(SET_COOKIE, cookie)], "logged in").into_response())
     } else {
         println!(
             "failed login attempt: username: {} ip: {} X-Forwarded-For: {}",
@@ -83,13 +82,13 @@ pub async fn login(
             ip.ip(),
             forwarded_for
         );
-        (StatusCode::NOT_FOUND, "username or password is wrong").into_response()
+        Err(UserError::LoginError.into())
     }
 }
 
 pub async fn logout() -> impl IntoResponse {
     let cookie = Cookie::new("auth", "").to_string();
-    ([(SET_COOKIE, cookie)], "logged out".into_response()).into_response()
+    ([(SET_COOKIE, cookie)], "logged out").into_response()
 }
 
 pub async fn login_status() -> impl IntoResponse {
@@ -101,12 +100,15 @@ pub async fn require_auth_middleware(
     state: AppState,
     request: Request,
     next: Next,
-) -> Response {
-    match cookies
+) -> Result<Response, AppError> {
+    let is_logged_in = cookies
         .get("auth")
         .map(|c| is_valid_token(&state.jwt_secret, c.value()))
-    {
-        Some(true) => next.run(request).await.into_response(),
-        _ => (StatusCode::UNAUTHORIZED, "you need to authorize").into_response(),
+        .unwrap_or(false);
+
+    if is_logged_in {
+        Ok(next.run(request).await.into_response())
+    } else {
+        Err(UserError::AuthError.into())
     }
 }
